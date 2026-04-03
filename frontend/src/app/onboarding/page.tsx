@@ -2,38 +2,14 @@
 
 import { persistProfile, registerWorker } from "@/lib/api";
 import { WEEKLY_TIERS } from "@/lib/premiums";
-import type { PersonaId, WeeklyTier } from "@/lib/types";
+import type { WeeklyTier } from "@/lib/types";
 import clsx from "clsx";
-import { ArrowRight, Bike, ShoppingBag, Store } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-const PERSONAS: {
-  id: PersonaId;
-  title: string;
-  subtitle: string;
-  icon: React.ReactNode;
-}[] = [
-  {
-    id: "food",
-    title: "Food delivery",
-    subtitle: "Zomato / Swiggy",
-    icon: <Bike className="size-6" aria-hidden />,
-  },
-  {
-    id: "ecomm",
-    title: "E‑commerce",
-    subtitle: "Amazon-style runs",
-    icon: <ShoppingBag className="size-6" aria-hidden />,
-  },
-  {
-    id: "grocery",
-    title: "Quick commerce",
-    subtitle: "Zepto / blinkit",
-    icon: <Store className="size-6" aria-hidden />,
-  },
-];
+const PERSONA_FOOD = "food" as const;
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -41,7 +17,6 @@ export default function OnboardingPage() {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
-  const [persona, setPersona] = useState<PersonaId>("food");
   const [tier, setTier] = useState<WeeklyTier>(99);
   const [zoneRisk, setZoneRisk] = useState(0.55);
   const [busy, setBusy] = useState(false);
@@ -49,9 +24,8 @@ export default function OnboardingPage() {
 
   const canNext = useMemo(() => {
     if (step === 1) return phone.length >= 10 && otp.length === 6 && name.trim().length > 1;
-    if (step === 2) return true;
     return true;
-  }, [step, phone, otp, name, persona, tier]);
+  }, [step, phone, otp, name]);
 
   async function finish() {
     setBusy(true);
@@ -59,7 +33,7 @@ export default function OnboardingPage() {
     const profile = {
       name: name.trim(),
       phone,
-      persona,
+      persona: PERSONA_FOOD,
       weeklyTier: tier,
       zoneRisk,
       onboardedAt: new Date().toISOString(),
@@ -86,10 +60,13 @@ export default function OnboardingPage() {
         <p className="mt-2 text-sm text-slate-400">
           Weekly tiers ₹49 / ₹99 / ₹149 — parametric triggers, zero manual claims.
         </p>
+        <p className="mt-3 text-xs text-slate-500">
+          For food delivery partners (e.g. Zomato / Swiggy).
+        </p>
       </div>
 
       <div className="mb-6 flex gap-2">
-        {[1, 2, 3].map((s) => (
+        {[1, 2].map((s) => (
           <div
             key={s}
             className={clsx(
@@ -132,33 +109,6 @@ export default function OnboardingPage() {
       ) : null}
 
       {step === 2 ? (
-        <section className="space-y-3">
-          <p className="text-sm text-slate-400">Choose your gig persona</p>
-          <div className="grid gap-3">
-            {PERSONAS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setPersona(p.id)}
-                className={clsx(
-                  "flex items-center gap-3 rounded-2xl border px-4 py-4 text-left transition",
-                  persona === p.id
-                    ? "border-sky-400/60 bg-sky-500/10"
-                    : "border-white/10 bg-white/5 hover:bg-white/10",
-                )}
-              >
-                <div className="rounded-xl bg-white/10 p-2 text-sky-200">{p.icon}</div>
-                <div>
-                  <p className="font-semibold">{p.title}</p>
-                  <p className="text-xs text-slate-400">{p.subtitle}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {step === 3 ? (
         <section className="space-y-4">
           <p className="text-sm text-slate-400">Weekly plan (matches payout cycle)</p>
           <div className="grid gap-3">
@@ -226,7 +176,7 @@ export default function OnboardingPage() {
             Skip (dev)
           </Link>
         )}
-        {step < 3 ? (
+        {step < 2 ? (
           <button
             type="button"
             disabled={!canNext}

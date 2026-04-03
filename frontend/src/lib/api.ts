@@ -234,6 +234,7 @@ export function loadProfile(): WorkerProfile | null {
     const j = JSON.parse(raw) as WorkerProfile & { zoneRisk?: number };
     return {
       ...j,
+      persona: "food",
       zoneRisk: typeof j.zoneRisk === "number" ? j.zoneRisk : 0.5,
     };
   } catch {

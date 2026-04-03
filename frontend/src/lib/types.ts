@@ -1,4 +1,5 @@
-export type PersonaId = "food" | "ecomm" | "grocery";
+/** Food delivery partners only (Zomato / Swiggy–style). */
+export type PersonaId = "food";
 
 export type WeeklyTier = 49 | 99 | 149;
 
