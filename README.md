@@ -1,6 +1,6 @@
 # HustlerCore AI
 
-**Guidewire DEVTrails 2026 — Phase 1 Submission**
+**Guidewire DEVTrails 2026** — Phase 1 (vision & architecture) **+ Phase 2 worker PWA** (see [§8](#8-phase-2--worker-pwa-person-b))
 
 HustlerCore AI is an AI-powered parametric income insurance platform built exclusively for platform-based food delivery partners (Zomato / Swiggy). The platform protects gig workers against income loss caused by uncontrollable external disruptions — extreme weather, severe air pollution, and civic shutdowns — through automated trigger monitoring, instant payout processing, and intelligent fraud detection. There are no claims to file and no paperwork to submit. When a disruption threshold is breached, the system acts.
 
@@ -15,6 +15,7 @@ HustlerCore AI is an AI-powered parametric income insurance platform built exclu
 5. [AI/ML Integration Plan](#5-aiml-integration-plan)
 6. [Tech Stack & Development Plan](#6-tech-stack--development-plan)
 7. [Roadmap](#7-roadmap)
+8. [Phase 2 — Worker PWA (Person B)](#8-phase-2--worker-pwa-person-b)
 
 ---
 
@@ -259,10 +260,9 @@ The server-side intelligence feeds nine worker-facing features in the mobile PWA
 ## 6. Tech Stack & Development Plan
 
 ### Frontend
-- React.js (Progressive Web App with service workers for offline support)
-- Tailwind CSS
-- UPI Deep Link integration
-- PWA web clip for persistent home-screen widget (Feature 7)
+- **Shipped (Phase 2, Person B):** Next.js 16 (App Router) PWA in [`frontend/`](./frontend/) — Tailwind CSS, `@ducanh2912/next-pwa`, mobile-first shell. See [§8](#8-phase-2--worker-pwa-person-b).
+- UPI deep links — planned (not yet wired in the PWA)
+- PWA install / offline — service worker generated at build; use **Demo modes** when APIs are unavailable (War Room backup)
 
 ### Backend
 - Node.js with Express (REST API and business logic layer)
@@ -315,13 +315,13 @@ Phase 1 — Weeks 1 and 2 (Current)
   [x] Synthetic worker behavioral dataset for RNN fraud training
 
 Phase 2 — Weeks 3 and 4
-  [ ] Shallow LSTM trigger classifier v1 deployed on EC2
-  [ ] Deep RNN premium forecasting model v1 trained on SageMaker
-  [ ] Real-time parametric trigger monitoring pipeline
-  [ ] Worker onboarding and zone registration flow
-  [ ] Policy creation and management API
-  [ ] UPI sandbox payout simulation
-  [ ] Features 1, 3, 7 live on PWA
+  [ ] Shallow LSTM trigger classifier v1 deployed on EC2 *(Person A / backend)*
+  [ ] Deep RNN premium forecasting model v1 trained on SageMaker *(Person A)*
+  [ ] Real-time parametric trigger monitoring pipeline *(Person A)*
+  [x] Worker onboarding & zone risk; active policy UI; weekly tiers ₹49 / ₹99 / ₹149 *(Person B — `frontend/`)*
+  [ ] Policy creation and management API *(Person A — FastAPI)*
+  [ ] UPI sandbox payout simulation *(Person A)*
+  [x] PWA: onboarding, Quick Payout Status widget (polls `GET /status` every 2s), policy/premium card, analytics & claims & NL chat UI; optional Supabase Realtime; Demo modes for offline rainstorm *(Person B)*
 
 Phase 3 — Weeks 5 and 6
   [ ] Deep RNN fraud sequence detector integrated and tested
@@ -337,6 +337,70 @@ Phase 3 — Weeks 5 and 6
   [ ] Model drift monitoring configured in CloudWatch
   [ ] Final demonstration video and Phase 3 presentation
 ```
+
+---
+
+## 8. Phase 2 — Worker PWA (Person B)
+
+This section documents what **Person B** owns: the **mobile-first PWA** in [`frontend/`](./frontend/). It targets **Guidewire DEVTrails Phase 2 — “high-fidelity simulation”**: the UI and client logic work with **mock/demo fallbacks** when Person A’s FastAPI is down or rate-limited.
+
+### Stack
+
+| Layer | Choice |
+|--------|--------|
+| Framework | Next.js 16 (App Router), React 19 |
+| Styling | Tailwind CSS v4 |
+| PWA | `@ducanh2912/next-pwa` (production build uses `npm run build` → `--webpack`) |
+| Charts | Recharts |
+| Optional realtime | Supabase JS — broadcast on channel `hustler-payout-status`, event `status` (polling remains the fallback) |
+
+### Git branches (Person B)
+
+- `pwa-onboarding` — onboarding & registration flow
+- `status-widget` — quick payout status & polling / realtime
+
+*(Both should track the same `frontend/` commits unless you split work.)*
+
+### Run locally
+
+```bash
+cd frontend
+cp .env.example .env.local   # set NEXT_PUBLIC_API_URL to Person A’s FastAPI base
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. Complete onboarding once; the app stores a minimal profile in `localStorage`.
+
+### Environment variables (`frontend/.env.example`)
+
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_API_URL` | Person A FastAPI base (no trailing slash), e.g. `http://127.0.0.1:8000` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Optional — instant status updates via Realtime broadcast |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional — anon key for Realtime only |
+
+### What the PWA implements
+
+- **Onboarding:** phone + OTP (demo), persona (food / e‑comm / grocery), weekly tier (₹49 / ₹99 / ₹149), zone-risk slider (drives premium story, e.g. ₹49 → ₹47).
+- **Dashboard:** active policy card (`POST /calculate-premium` with heuristic fallback), **Quick Payout Status** (clear / elevated / trigger), parametric trigger list, model-performance chart (simulation), 7-signal fraud **preview** (judge narrative), **Demo modes** (clear sky, elevated, severe rain, AQI, curfew) when APIs fail.
+- **Claims:** Tier 1 vs Tier 3 history (`GET /claims` or mock).
+- **Analytics:** protected vs lost + forecast (`GET /analytics` or mock).
+- **NL inquiry:** Hindi / English; suggested Hindi prompt for judges (`POST /inquiry` or mock).
+
+### API contract (Person A)
+
+The client expects JSON from FastAPI (paths may be adjusted to match your implementation):
+
+| Method | Path | Role |
+|--------|------|------|
+| `POST` | `/register` | Persist worker + plan |
+| `GET` | `/status` | Polled every **2 seconds** for the status widget |
+| `POST` | `/calculate-premium` | Weekly ₹ after zone risk |
+| `GET` | `/analytics`, `/claims`, `/model-metrics` | Dashboards |
+| `POST` | `/inquiry` | NL replies |
+
+**Zero-touch demo:** Person A should expose an admin trigger (e.g. rain) that flips `/status`; the PWA shows **₹{tier payout} processing** when state moves to **trigger active**.
 
 ---
 
