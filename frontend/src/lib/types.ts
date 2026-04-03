@@ -8,6 +8,7 @@ export type StatusLevel = "clear" | "elevated_risk" | "trigger_active";
 export type DemoMode =
   | "live"
   | "clear_sky"
+  | "risk_watch"
   | "severe_rain"
   | "aqi_spike"
   | "curfew_red";

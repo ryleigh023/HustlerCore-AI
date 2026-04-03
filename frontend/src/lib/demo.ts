@@ -5,8 +5,9 @@ const KEY = "hustler_demo_mode";
 export const DEMO_MODES: { id: DemoMode; label: string; hint: string }[] = [
   { id: "live", label: "Live API", hint: "Use FastAPI /status (falls back if offline)" },
   { id: "clear_sky", label: "Clear sky", hint: "Green — no triggers" },
-  { id: "severe_rain", label: "Severe rain", hint: "Red — rain >65mm" },
-  { id: "aqi_spike", label: "AQI spike", hint: "Amber → Red — AQI >400" },
+  { id: "risk_watch", label: "Elevated", hint: "Amber — watch band (not yet payout)" },
+  { id: "severe_rain", label: "Severe rain", hint: "Red — rain >65mm (video wow)" },
+  { id: "aqi_spike", label: "AQI spike", hint: "Red — AQI >400" },
   { id: "curfew_red", label: "Curfew", hint: "Red zone curfew = true" },
 ];
 
@@ -36,6 +37,16 @@ export function statusForDemoMode(mode: DemoMode): StatusPayload | null {
         aqi: 120,
         curfew: false,
         activeTriggers: [],
+      };
+    case "risk_watch":
+      return {
+        level: "elevated_risk",
+        label: "Watch band",
+        detail: "Signals rising — LSTM confidence elevated; payout not started.",
+        rain_mm: 48,
+        aqi: 220,
+        curfew: false,
+        activeTriggers: ["watch_band"],
       };
     case "severe_rain":
       return {
