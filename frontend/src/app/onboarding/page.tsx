@@ -197,6 +197,12 @@ export default function OnboardingPage() {
               Risk score proxy: {(zoneRisk * 100).toFixed(0)}% — used with Person A
               /calculate-premium
             </p>
+            {tier === 49 ? (
+              <p className="mt-2 text-xs text-sky-200/90">
+                War Room deck: slide toward a <strong>low-risk</strong> zone (~25%) to show
+                Basic Shield <strong>₹49 → ₹47</strong> (Δ −₹2, within ±₹5).
+              </p>
+            ) : null}
           </div>
         </section>
       ) : null}

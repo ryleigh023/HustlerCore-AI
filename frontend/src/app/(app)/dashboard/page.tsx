@@ -1,6 +1,7 @@
 "use client";
 
 import { DemoControls } from "@/components/DemoControls";
+import { FraudFingerprintCard } from "@/components/FraudFingerprintCard";
 import { ModelPerformanceChart } from "@/components/ModelPerformanceChart";
 import { PolicyCard } from "@/components/PolicyCard";
 import { StatusWidget } from "@/components/StatusWidget";
@@ -40,10 +41,12 @@ export default function DashboardPage() {
       <StatusWidget tier={profile.weeklyTier} refreshKey={refresh} />
       <TriggerStrip refreshKey={refresh} />
       <ModelPerformanceChart refreshKey={refresh} />
+      <FraudFingerprintCard />
       <DemoControls onModeChange={() => setRefresh((x) => x + 1)} />
       <p className="text-center text-[11px] leading-relaxed text-slate-600">
-        Person A: poll <code className="text-slate-500">GET /status</code> every 2s. Admin
-        rain demo flips the backend; use demo modes if the API is offline.
+        Person A: poll <code className="text-slate-500">GET /status</code> every 2s; optional
+        Supabase broadcast on channel <code className="text-slate-500">hustler-payout-status</code>{" "}
+        for instant updates. Demo modes if the API is offline.
       </p>
     </div>
   );

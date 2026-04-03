@@ -102,6 +102,7 @@ export async function fetchPremiumQuote(
   base: WeeklyTier,
   zoneRisk: number,
 ): Promise<PremiumQuote> {
+  const local = localPremiumQuote(base, zoneRisk);
   const data = await tryFetch<PremiumQuote>("/calculate-premium", {
     method: "POST",
     body: JSON.stringify({
@@ -109,8 +110,16 @@ export async function fetchPremiumQuote(
       zone_risk: zoneRisk,
     }),
   });
-  if (data && typeof data.adjustedInr === "number") return data;
-  return localPremiumQuote(base, zoneRisk);
+  if (data && typeof data.adjustedInr === "number") {
+    return {
+      ...local,
+      ...data,
+      riskScore: data.riskScore ?? local.riskScore,
+      historicalRain: data.historicalRain ?? local.historicalRain,
+      zoneDensity: data.zoneDensity ?? local.zoneDensity,
+    };
+  }
+  return local;
 }
 
 /** “Model performance” chart — optional GET /model-metrics */

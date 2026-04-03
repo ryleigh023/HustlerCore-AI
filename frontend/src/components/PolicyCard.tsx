@@ -1,7 +1,11 @@
 "use client";
 
 import { fetchPremiumQuote } from "@/lib/api";
-import { WEEKLY_TIERS, renewalDateISO } from "@/lib/premiums";
+import {
+  WEEKLY_TIERS,
+  formatPremiumExplain,
+  renewalDateISO,
+} from "@/lib/premiums";
 import type { PremiumQuote, WeeklyTier } from "@/lib/types";
 import { CalendarDays, IndianRupee } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -58,9 +62,17 @@ export function PolicyCard({
             )}
           </p>
           {q ? (
-            <p className="mt-1 text-xs text-slate-500">
-              {q.zoneLabel} · risk score {q.riskScore} (heuristic ±₹5)
-            </p>
+            <>
+              <p className="mt-1 text-xs text-slate-500">
+                {q.zoneLabel} · {formatPremiumExplain(q)}
+              </p>
+              {q.baseInr === 49 && q.adjustedInr === 47 ? (
+                <p className="mt-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2 py-1.5 text-[11px] text-sky-100">
+                  Deck example: Basic Shield ₹49 → ₹47 when hyper-local risk is low (Δ −₹2,
+                  within ±₹5 band).
+                </p>
+              ) : null}
+            </>
           ) : null}
         </div>
       </div>

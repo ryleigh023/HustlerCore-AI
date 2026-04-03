@@ -60,4 +60,7 @@ export interface PremiumQuote {
   adjustedInr: number;
   zoneLabel: string;
   riskScore: number;
+  /** Inputs for judge story: ₹49 → ₹47 style explanation */
+  historicalRain?: number;
+  zoneDensity?: number;
 }

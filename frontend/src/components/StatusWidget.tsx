@@ -2,10 +2,11 @@
 
 import { fetchStatus } from "@/lib/api";
 import { payoutForTier } from "@/lib/premiums";
-import type { StatusLevel, WeeklyTier } from "@/lib/types";
+import { isSupabaseConfigured, subscribePayoutStatus } from "@/lib/supabase";
+import type { StatusLevel, StatusPayload, WeeklyTier } from "@/lib/types";
 import clsx from "clsx";
-import { AlertTriangle, CheckCircle2, Zap } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, CheckCircle2, Radio, Zap } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 function stylesForLevel(level: StatusLevel): {
   bar: string;
@@ -51,8 +52,25 @@ export function StatusWidget({
   const [label, setLabel] = useState("—");
   const [detail, setDetail] = useState<string | undefined>();
   const [toast, setToast] = useState<string | null>(null);
+  const [realtime, setRealtime] = useState<"off" | "live" | "err">("off");
   const prevLevel = useRef<StatusLevel | null>(null);
-  const payout = payoutForTier(tier);
+
+  const applyPayload = useCallback((s: StatusPayload) => {
+    const payout = payoutForTier(tier);
+    setLevel(s.level);
+    setLabel(s.label);
+    setDetail(s.detail);
+    const was = prevLevel.current;
+    if (was === null) {
+      prevLevel.current = s.level;
+      return;
+    }
+    if (was !== "trigger_active" && s.level === "trigger_active") {
+      setToast(`₹${payout} processing — parametric payout started`);
+      window.setTimeout(() => setToast(null), 6000);
+    }
+    prevLevel.current = s.level;
+  }, [tier]);
 
   useEffect(() => {
     prevLevel.current = null;
@@ -60,19 +78,7 @@ export function StatusWidget({
     async function load() {
       const s = await fetchStatus();
       if (cancelled) return;
-      setLevel(s.level);
-      setLabel(s.label);
-      setDetail(s.detail);
-      const was = prevLevel.current;
-      if (was === null) {
-        prevLevel.current = s.level;
-        return;
-      }
-      if (was !== "trigger_active" && s.level === "trigger_active") {
-        setToast(`₹${payout} processing — parametric payout started`);
-        window.setTimeout(() => setToast(null), 6000);
-      }
-      prevLevel.current = s.level;
+      applyPayload(s);
     }
     void load();
     const id = window.setInterval(load, 2000);
@@ -80,7 +86,24 @@ export function StatusWidget({
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [refreshKey, payout, tier]);
+  }, [refreshKey, applyPayload]);
+
+  /** Supabase Realtime broadcast — zero-touch loop when Person A pushes status. */
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      setRealtime("off");
+      return;
+    }
+    const unsub = subscribePayoutStatus(
+      (s) => applyPayload(s),
+      (st) => {
+        if (st === "SUBSCRIBED") setRealtime("live");
+        if (st === "CHANNEL_ERROR") setRealtime("err");
+        if (st === "CLOSED") setRealtime("off");
+      },
+    );
+    return unsub;
+  }, [refreshKey, applyPayload]);
 
   const vis = stylesForLevel(level);
 
@@ -102,9 +125,20 @@ export function StatusWidget({
       >
         <div className="flex items-start justify-between gap-3 p-4">
           <div>
-            <p className={clsx("text-xs font-semibold uppercase", vis.text)}>
-              Quick payout status
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className={clsx("text-xs font-semibold uppercase", vis.text)}>
+                Quick payout status
+              </p>
+              {realtime === "live" ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white">
+                  <Radio className="size-3" aria-hidden />
+                  Supabase realtime
+                </span>
+              ) : null}
+              {realtime === "err" ? (
+                <span className="text-[10px] text-amber-200/90">Realtime error — polling</span>
+              ) : null}
+            </div>
             <p className={clsx("mt-1 text-lg font-bold tracking-tight", vis.text)}>
               {vis.headline}
             </p>

@@ -61,5 +61,16 @@ export function localPremiumQuote(
           ? "Metro corridor"
           : "High-risk monsoon band",
     riskScore: Math.round(riskScore * 100) / 100,
+    historicalRain: Math.round(historicalRain * 100) / 100,
+    zoneDensity: Math.round(zoneDensity * 100) / 100,
   };
+}
+
+/** Judge line item: e.g. Basic ₹49 → ₹47 when risk score ≈0.30 (Δ −₹2, within ±₹5). */
+export function formatPremiumExplain(q: PremiumQuote): string {
+  const delta = q.adjustedInr - q.baseInr;
+  const sign = delta > 0 ? "+" : "";
+  const hr = q.historicalRain ?? 0;
+  const zd = q.zoneDensity ?? 0;
+  return `₹${q.baseInr} → ₹${q.adjustedInr} (${sign}${delta}). Risk ${q.riskScore} = (Historical rain×0.6)+(Zone density×0.4) using inputs ${hr} / ${zd} — hyper-local ±₹5 cap.`;
 }

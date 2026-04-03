@@ -34,8 +34,8 @@ export function ModelPerformanceChart({ refreshKey = 0 }: { refreshKey?: number 
         Model performance (simulation)
       </p>
       <p className="mt-1 text-xs text-slate-500">
-        Sprint stand-in for XGBoost / rule engine — shows you have an evaluation
-        loop, not just UI.
+        Sprint stand-in for XGBoost / scikit-learn — evaluation loop vs. an ~80%
+        disruption-confidence threshold (simulation). Not production LSTM.
       </p>
       <div className="mt-4 h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
