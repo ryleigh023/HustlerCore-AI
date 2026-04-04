@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import random
+<<<<<<< HEAD
+=======
+from pricing import calculate_premium, explain_pricing
+>>>>>>> 9fea167953deced471fd586d5997e14ce3e8e774
 
 app = FastAPI()
 
@@ -17,6 +21,10 @@ class PremiumResponse(BaseModel):
     disruption_level: str
     score: int
     premium: int
+<<<<<<< HEAD
+=======
+    explanation: dict
+>>>>>>> 9fea167953deced471fd586d5997e14ce3e8e774
 
 # -------------------- Trigger Simulation --------------------
 
@@ -53,6 +61,7 @@ def calculate_disruption(rain, aqi, curfew):
 
     return level, score
 
+<<<<<<< HEAD
 # -------------------- Pricing Logic --------------------
 
 def calculate_premium(disruption_level):
@@ -62,6 +71,8 @@ def calculate_premium(disruption_level):
         return 99
     else:
         return 149
+=======
+>>>>>>> 9fea167953deced471fd586d5997e14ce3e8e774
 
 # -------------------- API Endpoints --------------------
 
@@ -86,14 +97,29 @@ def status():
         "score": score
     }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9fea167953deced471fd586d5997e14ce3e8e774
 @app.get("/premium", response_model=PremiumResponse)
 def premium():
     rain, aqi, curfew = get_triggers()
     level, score = calculate_disruption(rain, aqi, curfew)
+<<<<<<< HEAD
     premium = calculate_premium(level)
+=======
+
+    premium_value = calculate_premium(level, score)
+    explanation = explain_pricing(level, score)
+>>>>>>> 9fea167953deced471fd586d5997e14ce3e8e774
 
     return {
         "disruption_level": level,
         "score": score,
+<<<<<<< HEAD
         "premium": premium
+=======
+        "premium": premium_value,
+        "explanation": explanation
+>>>>>>> 9fea167953deced471fd586d5997e14ce3e8e774
     }
