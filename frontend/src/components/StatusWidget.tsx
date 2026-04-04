@@ -1,12 +1,16 @@
 "use client";
 
 import { fetchStatus } from "@/lib/api";
-import { payoutForTier } from "@/lib/premiums";
+import {
+  PARAMETRIC_DEMO_PAYOUT_INR,
+  recordParametricPayoutAmount,
+} from "@/lib/parametricPayout";
 import { isSupabaseConfigured, subscribePayoutStatus } from "@/lib/supabase";
 import type { StatusLevel, StatusPayload, WeeklyTier } from "@/lib/types";
 import clsx from "clsx";
 import { AlertTriangle, CheckCircle2, Radio, Zap } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 function stylesForLevel(level: StatusLevel): {
   bar: string;
@@ -42,21 +46,19 @@ function stylesForLevel(level: StatusLevel): {
 }
 
 export function StatusWidget({
-  tier,
   refreshKey = 0,
 }: {
-  tier: WeeklyTier;
+  /** Kept for API compatibility with dashboard; payout demo uses ₹280 from backend loop. */
+  tier?: WeeklyTier;
   refreshKey?: number;
 }) {
   const [level, setLevel] = useState<StatusLevel>("clear");
   const [label, setLabel] = useState("—");
   const [detail, setDetail] = useState<string | undefined>();
-  const [toast, setToast] = useState<string | null>(null);
   const [realtime, setRealtime] = useState<"off" | "live" | "err">("off");
   const prevLevel = useRef<StatusLevel | null>(null);
 
   const applyPayload = useCallback((s: StatusPayload) => {
-    const payout = payoutForTier(tier);
     setLevel(s.level);
     setLabel(s.label);
     setDetail(s.detail);
@@ -66,11 +68,13 @@ export function StatusWidget({
       return;
     }
     if (was !== "trigger_active" && s.level === "trigger_active") {
-      setToast(`₹${payout} processing — parametric payout started`);
-      window.setTimeout(() => setToast(null), 6000);
+      toast.error("Extreme Weather Detected: Payout of ₹280 Initiated", {
+        duration: 8000,
+      });
+      recordParametricPayoutAmount(PARAMETRIC_DEMO_PAYOUT_INR);
     }
     prevLevel.current = s.level;
-  }, [tier]);
+  }, []);
 
   useEffect(() => {
     prevLevel.current = null;
@@ -81,7 +85,7 @@ export function StatusWidget({
       applyPayload(s);
     }
     void load();
-    const id = window.setInterval(load, 2000);
+    const id = window.setInterval(load, 3000);
     return () => {
       cancelled = true;
       window.clearInterval(id);
@@ -91,15 +95,15 @@ export function StatusWidget({
   /** Supabase Realtime broadcast — zero-touch loop when Person A pushes status. */
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      setRealtime("off");
+      queueMicrotask(() => setRealtime("off"));
       return;
     }
     const unsub = subscribePayoutStatus(
       (s) => applyPayload(s),
       (st) => {
-        if (st === "SUBSCRIBED") setRealtime("live");
-        if (st === "CHANNEL_ERROR") setRealtime("err");
-        if (st === "CLOSED") setRealtime("off");
+        if (st === "SUBSCRIBED") queueMicrotask(() => setRealtime("live"));
+        if (st === "CHANNEL_ERROR") queueMicrotask(() => setRealtime("err"));
+        if (st === "CLOSED") queueMicrotask(() => setRealtime("off"));
       },
     );
     return unsub;
@@ -109,14 +113,6 @@ export function StatusWidget({
 
   return (
     <div className="relative">
-      {toast ? (
-        <div
-          className="mb-3 rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-3 text-sm font-medium text-emerald-50 shadow-lg shadow-emerald-900/20"
-          role="status"
-        >
-          {toast}
-        </div>
-      ) : null}
       <div
         className={clsx(
           "overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br shadow-xl",
@@ -142,6 +138,15 @@ export function StatusWidget({
             <p className={clsx("mt-1 text-lg font-bold tracking-tight", vis.text)}>
               {vis.headline}
             </p>
+            {level === "trigger_active" ? (
+              <p
+                className={clsx(
+                  "mt-2 inline-flex rounded-lg border border-amber-400/50 bg-amber-500/20 px-2.5 py-1 text-sm font-bold tracking-tight text-amber-100",
+                )}
+              >
+                ₹{PARAMETRIC_DEMO_PAYOUT_INR} Processing
+              </p>
+            ) : null}
             <p className={clsx("mt-1 text-sm opacity-95", vis.text)}>{label}</p>
             {detail ? (
               <p className={clsx("mt-2 text-xs leading-snug opacity-90", vis.text)}>

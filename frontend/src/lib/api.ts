@@ -40,15 +40,69 @@ export async function registerWorker(profile: {
 }
 
 /**
- * GET /status — polled every 2s. Demo mode overrides API (War Room “hardcoded demo”).
+ * FastAPI may return `{"trigger_status":"active","reason":"Heavy Rain"}` or legacy `level` payloads.
+ */
+function parseStatusJson(raw: unknown): StatusPayload | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+
+  if (typeof o.trigger_status === "string") {
+    const ts = o.trigger_status.toLowerCase();
+    if (ts === "active") {
+      const reason =
+        typeof o.reason === "string" && o.reason.trim()
+          ? o.reason.trim()
+          : "Parametric trigger";
+      return {
+        level: "trigger_active",
+        label: reason,
+        detail: `${reason} — parametric payout pipeline started.`,
+        rain_mm: typeof o.rain_mm === "number" ? o.rain_mm : undefined,
+        aqi: typeof o.aqi === "number" ? o.aqi : undefined,
+        curfew: typeof o.curfew === "boolean" ? o.curfew : false,
+        activeTriggers: ["parametric"],
+      };
+    }
+    return {
+      level: "clear",
+      label: "All clear",
+      detail: "No parametric triggers active.",
+      rain_mm: typeof o.rain_mm === "number" ? o.rain_mm : undefined,
+      aqi: typeof o.aqi === "number" ? o.aqi : undefined,
+      curfew: typeof o.curfew === "boolean" ? o.curfew : false,
+      activeTriggers: [],
+    };
+  }
+
+  if (typeof o.level === "string") {
+    return normalizeStatus(o as unknown as StatusPayload);
+  }
+  return null;
+}
+
+async function fetchStatusFromApi(): Promise<StatusPayload | null> {
+  try {
+    const res = await fetch(`${getApiBase()}/status`, {
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) return null;
+    const raw: unknown = await res.json();
+    return parseStatusJson(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * GET /status — Person A FastAPI; demo mode overrides when not "live".
  */
 export async function fetchStatus(): Promise<StatusPayload> {
   const mode = getDemoMode();
   const demo = statusForDemoMode(mode);
   if (demo) return demo;
 
-  const data = await tryFetch<StatusPayload>("/status");
-  if (data?.level) return normalizeStatus(data);
+  const data = await fetchStatusFromApi();
+  if (data) return data;
   return mockStatus();
 }
 

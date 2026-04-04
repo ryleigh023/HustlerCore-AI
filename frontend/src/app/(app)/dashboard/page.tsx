@@ -22,7 +22,7 @@ export default function DashboardPage() {
       router.replace("/onboarding");
       return;
     }
-    setProfile(p);
+    queueMicrotask(() => setProfile(p));
   }, [router]);
 
   if (!profile) {
@@ -38,13 +38,13 @@ export default function DashboardPage() {
         zoneRisk={profile.zoneRisk}
         refreshKey={refresh}
       />
-      <StatusWidget tier={profile.weeklyTier} refreshKey={refresh} />
+      <StatusWidget refreshKey={refresh} />
       <TriggerStrip refreshKey={refresh} />
       <ModelPerformanceChart refreshKey={refresh} />
       <FraudFingerprintCard />
       <DemoControls onModeChange={() => setRefresh((x) => x + 1)} />
       <p className="text-center text-[11px] leading-relaxed text-slate-600">
-        Person A: poll <code className="text-slate-500">GET /status</code> every 2s; optional
+        Person A: poll <code className="text-slate-500">GET /status</code> every 3s; optional
         Supabase broadcast on channel <code className="text-slate-500">hustler-payout-status</code>{" "}
         for instant updates. Demo modes if the API is offline.
       </p>

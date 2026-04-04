@@ -1,10 +1,13 @@
 "use client";
 
-import { fetchAnalytics } from "@/lib/api";
-import { loadProfile } from "@/lib/api";
+import { fetchAnalytics, loadProfile } from "@/lib/api";
+import {
+  PARAMETRIC_PAYOUT_EVENT,
+  getSimulatedParametricPayoutTotal,
+} from "@/lib/parametricPayout";
 import type { AnalyticsPayload } from "@/lib/types";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -18,14 +21,38 @@ import {
   YAxis,
 } from "recharts";
 
+function mergeSimulatedProtected(base: AnalyticsPayload): AnalyticsPayload {
+  const bonus = getSimulatedParametricPayoutTotal();
+  return {
+    ...base,
+    incomeProtected: base.incomeProtected + bonus,
+  };
+}
+
 export default function AnalyticsPage() {
   const router = useRouter();
   const [data, setData] = useState<AnalyticsPayload | null>(null);
 
+  const refreshAnalytics = useCallback(async () => {
+    const base = await fetchAnalytics();
+    setData(mergeSimulatedProtected(base));
+  }, []);
+
   useEffect(() => {
     if (!loadProfile()) router.replace("/onboarding");
-    void (async () => setData(await fetchAnalytics()))();
-  }, [router]);
+    queueMicrotask(() => void refreshAnalytics());
+  }, [router, refreshAnalytics]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => void refreshAnalytics(), 3000);
+    return () => window.clearInterval(id);
+  }, [refreshAnalytics]);
+
+  useEffect(() => {
+    const onPayout = () => void refreshAnalytics();
+    window.addEventListener(PARAMETRIC_PAYOUT_EVENT, onPayout);
+    return () => window.removeEventListener(PARAMETRIC_PAYOUT_EVENT, onPayout);
+  }, [refreshAnalytics]);
 
   if (!data) {
     return (
@@ -43,7 +70,9 @@ export default function AnalyticsPage() {
       <div>
         <h1 className="text-lg font-bold text-white">Income analytics</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Income protected vs lost — plus a 30-day disruption forecast (mock / API).
+          Income protected vs lost updates when parametric triggers fire (live{" "}
+          <code className="text-slate-500">GET /status</code> + simulated ₹280 payouts). Forecast
+          from mock / API.
         </p>
       </div>
 
