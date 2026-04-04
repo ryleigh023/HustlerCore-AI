@@ -2,13 +2,24 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import random
 from pricing import calculate_premium, explain_pricing
+from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
 
 app = FastAPI()
+
+# -------------------- CORS --------------------
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # -------------------- Admin State --------------------
 
 admin_state = {
-    "mode": "auto",   # auto or manual
+    "mode": "auto",
     "rain": None,
     "aqi": None,
     "curfew": None
@@ -22,25 +33,33 @@ class StatusResponse(BaseModel):
     curfew: bool
     disruption_level: str
     score: int
+    trigger_status: str
 
 class PremiumResponse(BaseModel):
     disruption_level: str
     score: int
     premium: int
+    payout: int
     explanation: dict
+
+# -------------------- Admin Request Model --------------------
+
+class AdminRequest(BaseModel):
+    mode: str
+    rain: Optional[str] = None
+    aqi: Optional[str] = None
+    curfew: Optional[bool] = None
 
 # -------------------- Trigger Simulation --------------------
 
 def get_triggers():
-    # If manual mode → use admin values
     if admin_state["mode"] == "manual":
-        return (
-            admin_state["rain"],
-            admin_state["aqi"],
-            admin_state["curfew"]
-        )
+        rain = admin_state["rain"] or "low"
+        aqi = admin_state["aqi"] or "good"
+        curfew = admin_state["curfew"] if admin_state["curfew"] is not None else False
 
-    # Else → random mode
+        return rain, aqi, curfew
+
     rain = random.choice(["low", "moderate", "heavy"])
     aqi = random.choice(["good", "poor", "severe"])
     curfew = random.choice([True, False])
@@ -74,7 +93,6 @@ def calculate_disruption(rain, aqi, curfew):
 
     return level, score
 
-
 # -------------------- API Endpoints --------------------
 
 @app.get("/")
@@ -90,14 +108,16 @@ def status():
     rain, aqi, curfew = get_triggers()
     level, score = calculate_disruption(rain, aqi, curfew)
 
+    trigger_status = "active" if level == "high" else "normal"
+
     return {
         "rain": rain,
         "aqi": aqi,
         "curfew": curfew,
         "disruption_level": level,
-        "score": score
+        "score": score,
+        "trigger_status": trigger_status
     }
-
 
 @app.get("/premium", response_model=PremiumResponse)
 def premium():
@@ -107,31 +127,36 @@ def premium():
     premium_value = calculate_premium(level, score)
     explanation = explain_pricing(level, score)
 
+    payout = 280 if level == "high" else 0
+
     return {
         "disruption_level": level,
         "score": score,
         "premium": premium_value,
+        "payout": payout,
         "explanation": explanation
     }
 
-from typing import Optional
+# -------------------- ADMIN CONTROL --------------------
 
 @app.post("/admin/set-mode")
-def set_mode(
-    mode: str,
-    rain: Optional[str] = None,
-    aqi: Optional[str] = None,
-    curfew: Optional[bool] = None
-):
-    if mode not in ["auto", "manual"]:
+def set_mode(data: AdminRequest):
+    if data.mode not in ["auto", "manual"]:
         return {"error": "mode must be 'auto' or 'manual'"}
 
-    admin_state["mode"] = mode
+    admin_state["mode"] = data.mode
 
-    if mode == "manual":
-        admin_state["rain"] = rain
-        admin_state["aqi"] = aqi
-        admin_state["curfew"] = curfew
+    if data.mode == "manual":
+
+        # DEMO SHORTCUT
+        if data.rain == "storm":
+            admin_state["rain"] = "heavy"
+            admin_state["aqi"] = "severe"
+            admin_state["curfew"] = True
+        else:
+            admin_state["rain"] = data.rain
+            admin_state["aqi"] = data.aqi
+            admin_state["curfew"] = data.curfew
 
     return {
         "message": "mode updated",
