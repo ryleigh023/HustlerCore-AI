@@ -133,6 +133,7 @@ The Deep RNN model forecasts the seven-day disruption probability for each worke
 | Elevated Air Pollution | CPCB | AQI 201–350 sustained for >= 4 continuous hours | Half day |
 | Zone Curfew or Strike | Civic feeds and Platform API | Zero platform orders for >= 2 hours with civic confirmation | Pro-rated |
 | Flash Flood Warning | NDMA | Flood warning issued for registered delivery zone | Full day |
+| Major Traffic Congestion | Municipal Traffic API | Average zone transit speed < 10 km/h for >= 2 continuous hours | Half day |
 
 All triggers are evaluated against time-series sequences by the Shallow LSTM model — not as single-point threshold checks. This captures the temporal progression of a disruption event rather than reacting to transient spikes.
 
